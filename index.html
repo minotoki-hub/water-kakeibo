@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <!-- iPadやiPhoneでアプリのように全画面表示するための設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>家計簿タンク (Web版)</title>
+    <style>
+        /* --- ① 全体のデザインとレイアウト --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f2f2f7;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background: #fff;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        h1 { margin: 0; font-size: 1.2rem; color: #333; }
+
+        .btn {
+            color: #007aff;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* タンクを横並びにスクロールさせるエリア */
+        #tank-container {
+            flex: 1;
+            display: flex;
+            gap: 40px;
+            padding: 40px 20px;
+            overflow-x: auto;
+            align-items: center;
+        }
+
+        /* --- ② タンクのデザイン（フタのズレをFlexboxで完全防止） --- */
+        .tank-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* これだけでフタと本体が絶対に中央揃えになります */
+            gap: 15px;
+            min-width: 220px;
+        }
+
+        .tank-lid {
+            width: 45px;
+            height: 16px;
+            background-color: #999;
+            border-radius: 4px;
+        }
+
+        .tank-body {
+            position: relative;
+            width: 200px;
+            height: 380px;
+            background-color: rgba(0, 122, 255, 0.05);
+            border: 5px solid #aaa;
+            border-radius: 16px;
+            overflow: hidden; /* 水が枠からはみ出ないようにする */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 目盛り（擬似要素を使って両端に配置） */
+        .tank-ticks {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            pointer-events: none; /* クリックの邪魔をしない */
+            z-index: 10;
+        }
+        .tick { display: flex; justify-content: space-between; width: 100%; }
+        .tick::before, .tick::after {
+            content: '';
+            width: 12px; height: 2px;
+            background-color: #aaa;
+        }
+
+        /* 水面のレイヤー */
+        .water-container {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* 下から積み上げる */
+        }
+        .water-fill {
+            width: 100%;
+            background-color: rgba(0, 200, 255, 0.7);
+            height: 0px; /* 初期値は0。JSで高さを変更してアニメーション */
+            transition: height 0.8s ease-out; /* なめらかに水位が上がる設定 */
+        }
+
+        /* 合計金額のラベル */
+        .tank-total {
+            position: absolute;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            backdrop-filter: blur(4px);
+        }
+
+        .category-name { font-size: 1.2rem; font-weight: bold; color: #333; }
+        
+        /* 支出追加ボタン（右下固定） */
+        .fab {
+            position: fixed;
+            bottom: 30px; right: 30px;
+            width: 60px; height: 60px;
+            background-color: #32ade6;
+            color: white;
+            border-radius: 30px;
+            font-size: 36px;
+            line-height: 60px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            cursor: pointer;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>今月の家計簿 (2026-11)</h1>
+        <div>
+            <button class="btn" onclick="addCategory()">カテゴリ追加</button>
+        </div>
+    </header>
+
+    <!-- ここにJSでタンクが自動生成されます -->
+    <div id="tank-container"></div>
+
+    <button class="fab" onclick="addExpense()">＋</button>
+
+    <!-- --- ③ 動作とデータの仕組み (JavaScript) --- -->
+    <script>
+        // localStorageからデータを読み込む（無ければ初期値）
+        let categories = JSON.parse(localStorage.getItem('wl_categories')) || ['食費', '外食費'];
+        let records = JSON.parse(localStorage.getItem('wl_records')) || [];
+
+        // 画面にタンクを描画する関数
+        function renderTanks() {
+            const container = document.getElementById('tank-container');
+            container.innerHTML = ''; // 一旦クリア
+
+            categories.forEach(category => {
+                // そのカテゴリの合計金額を計算
+                const categoryRecords = records.filter(r => r.category === category);
+                const totalSpent = categoryRecords.reduce((sum, record) => sum + record.amount, 0);
+
+                // 水位の計算 (プロトタイプとして、1万円をタンク満タン(380px)と仮定)
+                // ※後ほど予算設定機能を追加して、予算額に応じたパーセンテージに進化させます
+                const maxHeight = 380;
+                let waterHeight = (totalSpent / 10000) * maxHeight;
+                if (waterHeight > maxHeight) waterHeight = maxHeight; // 溢れないように制限
+
+                // タンクのHTML構造を生成
+                const tankHTML = `
+                    <div class="tank-wrapper">
+                        <div class="tank-lid"></div>
+                        <div class="tank-body">
+                            <div class="tank-ticks">
+                                <div class="tick"></div><div class="tick"></div><div class="tick"></div>
+                                <div class="tick"></div><div class="tick"></div><div class="tick"></div>
+                            </div>
+                            <div class="water-container">
+                                <!-- 水面の高さは style="height: ...px" で直接制御 -->
+                                <div class="water-fill" style="height: 0px;" data-target-height="${waterHeight}px"></div>
+                            </div>
+                            <div class="tank-total">${totalSpent}円</div>
+                        </div>
+                        <div class="category-name">${category}</div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', tankHTML);
+            });
+
+            // 少し遅らせて水面をアニメーションさせる（Swiftの .onAppear と同じ役割）
+            setTimeout(() => {
+                document.querySelectorAll('.water-fill').forEach(water => {
+                    water.style.height = water.getAttribute('data-target-height');
+                });
+            }, 50);
+        }
+
+        // 支出を入力する機能
+        function addExpense() {
+            if (categories.length === 0) {
+                alert("先にカテゴリを追加してください。");
+                return;
+            }
+            
+            // ※プロトタイプ用につき、簡易的な入力アラートを使用。後で綺麗な入力画面を作ります。
+            let catIndex = prompt("どのカテゴリに入力しますか？\n" + categories.map((c, i) => `${i+1}: ${c}`).join('\n') + "\n番号を入力してください：");
+            if (!catIndex || isNaN(catIndex) || catIndex < 1 || catIndex > categories.length) return;
+            
+            let amountStr = prompt("金額を入力してください (円):");
+            let amount = parseInt(amountStr, 10);
+            if (!amount || isNaN(amount)) return;
+
+            // 記録を追加
+            records.push({
+                category: categories[catIndex - 1],
+                amount: amount,
+                date: new Date().toISOString()
+            });
+
+            // Chrome(端末)に保存して、画面を更新
+            localStorage.setItem('wl_records', JSON.stringify(records));
+            renderTanks();
+        }
+
+        // カテゴリを追加する機能
+        function addCategory() {
+            let newCat = prompt("新しいカテゴリ名を入力してください:");
+            if (newCat && newCat.trim() !== "") {
+                categories.push(newCat.trim());
+                localStorage.setItem('wl_categories', JSON.stringify(categories));
+                renderTanks();
+            }
+        }
+
+        // 起動時に最初の描画を実行
+        renderTanks();
+    </script>
+</body>
+</html>
