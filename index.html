@@ -20,21 +20,28 @@
         h1 { margin: 0; font-size: 1.2rem; color: #333; }
         .header-buttons { display: flex; gap: 15px; }
         .btn { color: #007aff; background: none; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        .btn-reload { color: #ff3b30; } /* 強制更新ボタン用の赤色 */
 
         #tank-container {
             flex: 1; display: flex; gap: 40px; padding: 40px 20px;
             overflow-x: auto; align-items: center;
         }
 
-        /* --- ② タンクのデザイン --- */
-        .tank-wrapper { display: flex; flex-direction: column; align-items: center; gap: 15px; min-width: 220px; }
+        /* --- ② タンクのデザイン（隙間バグ完全修正版） --- */
+        .tank-wrapper { display: flex; flex-direction: column; align-items: center; gap: 15px; min-width: 220px; cursor: pointer; }
         .tank-lid { width: 45px; height: 16px; background-color: #999; border-radius: 4px; }
+        
         .tank-body {
             position: relative; width: 200px; height: 380px;
             background-color: rgba(0, 122, 255, 0.05);
             border: 5px solid #aaa; border-radius: 16px;
-            overflow: hidden; display: flex; justify-content: center; align-items: center;
+            
+            /* Safariの隙間バグを消す特効薬 */
+            overflow: hidden;
+            transform: translateZ(0);
+            -webkit-mask-image: -webkit-radial-gradient(white, black);
         }
+        
         .tank-ticks {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             display: flex; flex-direction: column; justify-content: space-evenly; pointer-events: none; z-index: 10;
@@ -42,20 +49,26 @@
         .tick { display: flex; justify-content: space-between; width: 100%; }
         .tick::before, .tick::after { content: ''; width: 12px; height: 2px; background-color: #aaa; }
         
+        /* 水のコンテナ（top/bottomを完全に固定して隙間をゼロに） */
         .water-container {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: flex-end;
-        }
-        .water-fill {
-            width: 100%; background-color: rgba(0, 200, 255, 0.7);
-            height: 0px; transition: height 0.8s ease-out;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            /* 下から上へ積み上げる設定 */
+            display: flex; flex-direction: column-reverse; justify-content: flex-start;
         }
         
-        /* 金額表示のスタイル調整 */
+        /* 1つ1つの水の層 */
+        .water-layer {
+            width: 100%; transition: height 0.8s ease-out; flex-shrink: 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.4); /* 層の境界線を綺麗に見せる */
+        }
+        
+        /* 金額表示（絶対配置に変更してズレを防止） */
         .tank-total {
-            position: absolute; z-index: 20; background: rgba(255, 255, 255, 0.85);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 20; background: rgba(255, 255, 255, 0.85);
             padding: 12px 16px; border-radius: 12px; font-weight: bold; color: #333; 
             backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; gap: 4px;
+            min-width: 100px; pointer-events: none;
         }
         .tank-total-amount { font-size: 1.4rem; }
         .tank-budget-text { font-size: 0.85rem; color: #666; font-weight: normal; }
@@ -101,6 +114,14 @@
         }
         .btn-cancel { background: #e5e5ea; color: #333; }
         .btn-save { background: #007aff; color: white; }
+
+        /* 詳細画面用の調整 */
+        #detail-modal { height: 80vh; padding-bottom: 20px; }
+        .history-item {
+            display: flex; align-items: center; background: #fff; padding: 16px; 
+            border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); margin-bottom: 12px;
+            border: 1px solid #eee;
+        }
     </style>
 </head>
 <body>
@@ -108,6 +129,7 @@
     <header>
         <h1>今月の家計簿</h1>
         <div class="header-buttons">
+            <button class="btn btn-reload" onclick="location.reload(true)">↻ 強制更新</button>
             <button class="btn" onclick="showBudgetModal()">予算設定</button>
             <button class="btn" onclick="addCategory()">カテゴリ追加</button>
         </div>
@@ -158,12 +180,25 @@
         </div>
     </div>
 
+    <!-- ③ 履歴の詳細モーダル -->
+    <div id="detail-modal" class="modal">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
+            <h2 id="detail-title" style="margin: 0; font-size: 1.5rem;">詳細</h2>
+            <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px;" onclick="closeAllModals()">閉じる</button>
+        </div>
+        <div id="detail-content" style="overflow-y: auto; flex: 1;">
+            <!-- ここにリストが生成されます -->
+        </div>
+    </div>
+
     <!-- --- ④ 動作とデータの仕組み --- -->
     <script>
-        // データの読み込み（予算データ wl_budgets を追加）
         let categories = JSON.parse(localStorage.getItem('wl_categories')) || ['食費', '日用品'];
         let records = JSON.parse(localStorage.getItem('wl_records')) || [];
-        let budgets = JSON.parse(localStorage.getItem('wl_budgets')) || {}; // 例: { "食費": 30000 }
+        let budgets = JSON.parse(localStorage.getItem('wl_budgets')) || {};
+
+        // レイヤーの色（青・緑・オレンジ・紫・ピンク・水色・黄色）
+        const waterColors = ['#007aff', '#34c759', '#ff9500', '#af52de', '#ff2d55', '#5ac8fa', '#ffcc00'];
 
         // タンクの描画
         function renderTanks() {
@@ -173,17 +208,20 @@
             categories.forEach(category => {
                 const categoryRecords = records.filter(r => r.category === category);
                 const totalSpent = categoryRecords.reduce((sum, record) => sum + record.amount, 0);
-                
-                // 予算を取得（設定されていなければ仮で10,000円とする）
                 const categoryBudget = budgets[category] || 10000;
-                
                 const maxHeight = 380;
-                // 予算に対する割合で水面の高さを計算
-                let waterHeight = (totalSpent / categoryBudget) * maxHeight;
-                if (waterHeight > maxHeight) waterHeight = maxHeight; // 溢れ防止
+                
+                // 記録ごとに違う色の水の層を作る
+                let waterHTML = '';
+                categoryRecords.forEach((record, index) => {
+                    let h = (record.amount / categoryBudget) * maxHeight;
+                    let color = waterColors[index % waterColors.length];
+                    // 初期状態はheight:0。後でアニメーションで膨らむ
+                    waterHTML += `<div class="water-layer" style="height: 0px; background-color: ${color};" data-target-height="${h}px"></div>`;
+                });
 
                 const tankHTML = `
-                    <div class="tank-wrapper">
+                    <div class="tank-wrapper" onclick="showDetailModal('${category}')">
                         <div class="tank-lid"></div>
                         <div class="tank-body">
                             <div class="tank-ticks">
@@ -191,7 +229,7 @@
                                 <div class="tick"></div><div class="tick"></div><div class="tick"></div>
                             </div>
                             <div class="water-container">
-                                <div class="water-fill" style="height: 0px;" data-target-height="${waterHeight}px"></div>
+                                ${waterHTML}
                             </div>
                             <div class="tank-total">
                                 <div class="tank-total-amount">${totalSpent}円</div>
@@ -206,7 +244,7 @@
             
             // アニメーション発火
             setTimeout(() => {
-                document.querySelectorAll('.water-fill').forEach(water => {
+                document.querySelectorAll('.water-layer').forEach(water => {
                     water.style.height = water.getAttribute('data-target-height');
                 });
             }, 50);
@@ -217,6 +255,7 @@
             document.getElementById('overlay').classList.remove('active');
             document.getElementById('expense-modal').classList.remove('active');
             document.getElementById('budget-modal').classList.remove('active');
+            document.getElementById('detail-modal').classList.remove('active');
         }
 
         // 支出モーダル
@@ -254,7 +293,6 @@
 
         function loadExistingBudget() {
             const cat = document.getElementById('budget-category').value;
-            // 既に予算が設定されていれば入力欄に表示、なければ空にする
             document.getElementById('budget-amount').value = budgets[cat] || '';
         }
 
@@ -263,13 +301,53 @@
             const amt = parseInt(document.getElementById('budget-amount').value, 10);
             if (!amt || isNaN(amt)) return alert("正しい金額を入力してください");
             
-            budgets[cat] = amt; // 予算データを更新
+            budgets[cat] = amt; 
             localStorage.setItem('wl_budgets', JSON.stringify(budgets));
             renderTanks();
             closeAllModals();
         }
 
-        // カテゴリ追加
+        // 履歴詳細モーダル
+        function showDetailModal(category) {
+            document.getElementById('detail-title').innerText = category + " の履歴";
+            const content = document.getElementById('detail-content');
+            
+            const categoryRecords = records.filter(r => r.category === category);
+            let listHTML = '';
+            
+            // 最新の記録が上に来るように逆順にする
+            const reversedRecords = [...categoryRecords].reverse();
+            
+            reversedRecords.forEach((record, revIndex) => {
+                // 水の色とリストの色を正確に合わせる計算
+                const originalIndex = categoryRecords.length - 1 - revIndex;
+                const color = waterColors[originalIndex % waterColors.length];
+                
+                // 日付のフォーマット (MM/DD)
+                const dateObj = new Date(record.date);
+                const dateStr = (dateObj.getMonth() + 1) + '/' + dateObj.getDate();
+                
+                listHTML += `
+                    <div class="history-item">
+                        <div style="width: 20px; height: 20px; border-radius: 10px; background-color: ${color}; margin-right: 15px;"></div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 0.85rem; color: #888;">${dateStr}</div>
+                            <div style="font-weight: bold; font-size: 1.1rem; color: #333;">${record.memo || '入力なし'}</div>
+                        </div>
+                        <div style="font-size: 1.3rem; font-weight: bold; color: #333;">${record.amount}円</div>
+                    </div>
+                `;
+            });
+            
+            if (categoryRecords.length === 0) {
+                listHTML = '<p style="text-align: center; color: #888; margin-top: 40px;">まだ記録がありません</p>';
+            }
+            
+            content.innerHTML = listHTML;
+            document.getElementById('overlay').classList.add('active');
+            document.getElementById('detail-modal').classList.add('active');
+        }
+
         function addCategory() {
             let newCat = prompt("新しいカテゴリ名を入力してください:");
             if (newCat && newCat.trim() !== "") {
@@ -284,3 +362,4 @@
     </script>
 </body>
 </html>
+
