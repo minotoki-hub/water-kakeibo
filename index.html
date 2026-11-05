@@ -9,8 +9,7 @@
         /* --- ① 全体のデザインとレイアウト --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f2f2f7;
-            margin: 0; padding: 0;
+            background-color: #f2f2f7; margin: 0; padding: 0;
             display: flex; flex-direction: column; height: 100vh;
         }
         header {
@@ -19,6 +18,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         h1 { margin: 0; font-size: 1.2rem; color: #333; }
+        .header-buttons { display: flex; gap: 15px; }
         .btn { color: #007aff; background: none; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; }
 
         #tank-container {
@@ -41,6 +41,7 @@
         }
         .tick { display: flex; justify-content: space-between; width: 100%; }
         .tick::before, .tick::after { content: ''; width: 12px; height: 2px; background-color: #aaa; }
+        
         .water-container {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; justify-content: flex-end;
@@ -49,26 +50,34 @@
             width: 100%; background-color: rgba(0, 200, 255, 0.7);
             height: 0px; transition: height 0.8s ease-out;
         }
+        
+        /* 金額表示のスタイル調整 */
         .tank-total {
             position: absolute; z-index: 20; background: rgba(255, 255, 255, 0.85);
-            padding: 10px 16px; border-radius: 12px; font-size: 1.5rem; font-weight: bold; color: #333; backdrop-filter: blur(4px);
+            padding: 12px 16px; border-radius: 12px; font-weight: bold; color: #333; 
+            backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; gap: 4px;
         }
+        .tank-total-amount { font-size: 1.4rem; }
+        .tank-budget-text { font-size: 0.85rem; color: #666; font-weight: normal; }
+        
         .category-name { font-size: 1.2rem; font-weight: bold; color: #333; }
         
+        /* ＋ボタン */
         .fab {
             position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
             background-color: #32ade6; color: white; border-radius: 30px;
             font-size: 36px; line-height: 60px; text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; z-index: 50;
         }
 
-        /* --- ③ 入力モーダル（ボトムシート）のデザイン --- */
+        /* --- ③ モーダル（ボトムシート）のデザイン --- */
         .overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
             transition: opacity 0.3s ease; z-index: 100;
         }
         .overlay.active { opacity: 1; pointer-events: auto; }
+        
         .modal {
             position: fixed; bottom: -100%; left: 0; right: 0;
             background: #fff; padding: 24px 20px 40px 20px;
@@ -98,16 +107,20 @@
 
     <header>
         <h1>今月の家計簿</h1>
-        <div><button class="btn" onclick="addCategory()">カテゴリ追加</button></div>
+        <div class="header-buttons">
+            <button class="btn" onclick="showBudgetModal()">予算設定</button>
+            <button class="btn" onclick="addCategory()">カテゴリ追加</button>
+        </div>
     </header>
 
     <div id="tank-container"></div>
 
-    <!-- ＋ボタン -->
     <button class="fab" onclick="showExpenseModal()">＋</button>
 
-    <!-- 支出入力用モーダル -->
-    <div id="expense-overlay" class="overlay" onclick="closeExpenseModal()"></div>
+    <!-- 共通の背景オーバーレイ -->
+    <div id="overlay" class="overlay" onclick="closeAllModals()"></div>
+
+    <!-- ① 支出入力用モーダル -->
     <div id="expense-modal" class="modal">
         <h2>支出の入力</h2>
         <div class="input-group">
@@ -123,25 +136,51 @@
             <input type="text" id="expense-memo" placeholder="例: 昼食代">
         </div>
         <div class="modal-actions">
-            <button class="btn-cancel" onclick="closeExpenseModal()">キャンセル</button>
+            <button class="btn-cancel" onclick="closeAllModals()">キャンセル</button>
             <button class="btn-save" onclick="saveExpense()">保存</button>
+        </div>
+    </div>
+
+    <!-- ② 予算設定用モーダル -->
+    <div id="budget-modal" class="modal">
+        <h2>予算の設定</h2>
+        <div class="input-group">
+            <label>カテゴリ</label>
+            <select id="budget-category" onchange="loadExistingBudget()"></select>
+        </div>
+        <div class="input-group">
+            <label>今月の予算 (円)</label>
+            <input type="number" id="budget-amount" placeholder="例: 20000" inputmode="numeric">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeAllModals()">キャンセル</button>
+            <button class="btn-save" onclick="saveBudget()">保存</button>
         </div>
     </div>
 
     <!-- --- ④ 動作とデータの仕組み --- -->
     <script>
+        // データの読み込み（予算データ wl_budgets を追加）
         let categories = JSON.parse(localStorage.getItem('wl_categories')) || ['食費', '日用品'];
         let records = JSON.parse(localStorage.getItem('wl_records')) || [];
+        let budgets = JSON.parse(localStorage.getItem('wl_budgets')) || {}; // 例: { "食費": 30000 }
 
+        // タンクの描画
         function renderTanks() {
             const container = document.getElementById('tank-container');
             container.innerHTML = '';
+            
             categories.forEach(category => {
                 const categoryRecords = records.filter(r => r.category === category);
                 const totalSpent = categoryRecords.reduce((sum, record) => sum + record.amount, 0);
+                
+                // 予算を取得（設定されていなければ仮で10,000円とする）
+                const categoryBudget = budgets[category] || 10000;
+                
                 const maxHeight = 380;
-                let waterHeight = (totalSpent / 10000) * maxHeight;
-                if (waterHeight > maxHeight) waterHeight = maxHeight;
+                // 予算に対する割合で水面の高さを計算
+                let waterHeight = (totalSpent / categoryBudget) * maxHeight;
+                if (waterHeight > maxHeight) waterHeight = maxHeight; // 溢れ防止
 
                 const tankHTML = `
                     <div class="tank-wrapper">
@@ -154,13 +193,18 @@
                             <div class="water-container">
                                 <div class="water-fill" style="height: 0px;" data-target-height="${waterHeight}px"></div>
                             </div>
-                            <div class="tank-total">${totalSpent}円</div>
+                            <div class="tank-total">
+                                <div class="tank-total-amount">${totalSpent}円</div>
+                                <div class="tank-budget-text">予算: ${categoryBudget}円</div>
+                            </div>
                         </div>
                         <div class="category-name">${category}</div>
                     </div>
                 `;
                 container.insertAdjacentHTML('beforeend', tankHTML);
             });
+            
+            // アニメーション発火
             setTimeout(() => {
                 document.querySelectorAll('.water-fill').forEach(water => {
                     water.style.height = water.getAttribute('data-target-height');
@@ -168,46 +212,64 @@
             }, 50);
         }
 
-        // 支出モーダルを表示する
+        // --- モーダル制御 ---
+        function closeAllModals() {
+            document.getElementById('overlay').classList.remove('active');
+            document.getElementById('expense-modal').classList.remove('active');
+            document.getElementById('budget-modal').classList.remove('active');
+        }
+
+        // 支出モーダル
         function showExpenseModal() {
-            if (categories.length === 0) {
-                alert("先にカテゴリを追加してください。"); return;
-            }
-            // カテゴリの選択肢をセット
+            if (categories.length === 0) return alert("先にカテゴリを追加してください。");
             const select = document.getElementById('expense-category');
             select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            
-            // 入力欄をリセット
             document.getElementById('expense-amount').value = '';
             document.getElementById('expense-memo').value = '';
-            
-            // 画面下からスッと出す
-            document.getElementById('expense-overlay').classList.add('active');
+            document.getElementById('overlay').classList.add('active');
             document.getElementById('expense-modal').classList.add('active');
         }
 
-        // モーダルを閉じる
-        function closeExpenseModal() {
-            document.getElementById('expense-overlay').classList.remove('active');
-            document.getElementById('expense-modal').classList.remove('active');
-        }
-
-        // 入力データを保存する
         function saveExpense() {
             const cat = document.getElementById('expense-category').value;
             const amt = parseInt(document.getElementById('expense-amount').value, 10);
             const memo = document.getElementById('expense-memo').value || '';
-            
-            if (!amt || isNaN(amt)) {
-                alert("正しい金額を入力してください"); return;
-            }
+            if (!amt || isNaN(amt)) return alert("正しい金額を入力してください");
             
             records.push({ category: cat, amount: amt, memo: memo, date: new Date().toISOString() });
             localStorage.setItem('wl_records', JSON.stringify(records));
             renderTanks();
-            closeExpenseModal(); // 保存後に閉じる
+            closeAllModals();
         }
 
+        // 予算モーダル
+        function showBudgetModal() {
+            if (categories.length === 0) return alert("先にカテゴリを追加してください。");
+            const select = document.getElementById('budget-category');
+            select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            loadExistingBudget();
+            document.getElementById('overlay').classList.add('active');
+            document.getElementById('budget-modal').classList.add('active');
+        }
+
+        function loadExistingBudget() {
+            const cat = document.getElementById('budget-category').value;
+            // 既に予算が設定されていれば入力欄に表示、なければ空にする
+            document.getElementById('budget-amount').value = budgets[cat] || '';
+        }
+
+        function saveBudget() {
+            const cat = document.getElementById('budget-category').value;
+            const amt = parseInt(document.getElementById('budget-amount').value, 10);
+            if (!amt || isNaN(amt)) return alert("正しい金額を入力してください");
+            
+            budgets[cat] = amt; // 予算データを更新
+            localStorage.setItem('wl_budgets', JSON.stringify(budgets));
+            renderTanks();
+            closeAllModals();
+        }
+
+        // カテゴリ追加
         function addCategory() {
             let newCat = prompt("新しいカテゴリ名を入力してください:");
             if (newCat && newCat.trim() !== "") {
@@ -217,6 +279,7 @@
             }
         }
 
+        // 初回描画
         renderTanks();
     </script>
 </body>
