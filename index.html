@@ -6,27 +6,31 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>家計簿タンク</title>
     <style>
-        /* --- ① 全体のデザインとレイアウト --- */
+        /* --- ① 全体のデザインとレイアウト（目に優しいカラー調整） --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f2f2f7; margin: 0; padding: 0;
+            background-color: #f4f4f7; margin: 0; padding: 0;
             display: flex; flex-direction: column; height: 100vh;
+            color: #444; /* 文字も真っ黒ではなく、少し柔らかなダークグレーに */
         }
         header {
             background: #fff; 
             padding: max(16px, env(safe-area-inset-top)) 20px 16px 20px;
             display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
         
         .month-selector { display: flex; align-items: center; gap: 10px; }
-        .month-selector button { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #007aff; padding: 0 5px; }
-        .month-selector h1 { margin: 0; font-size: 1.2rem; color: #333; min-width: 100px; text-align: center; }
+        /* 矢印ボタンもくすみブルーに */
+        .month-selector button { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #4a6fa5; padding: 0 5px; }
+        .month-selector h1 { margin: 0; font-size: 1.15rem; color: #333; min-width: 100px; text-align: center; }
         
         .header-buttons { display: flex; gap: 12px; align-items: center; }
-        .btn { color: #007aff; background: none; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; padding: 4px 8px;}
-        .btn-reload { color: #ff3b30; font-size: 1.2rem; }
-        .btn-icon { font-size: 1.4rem; }
+        /* 目に優しい落ち着いたブルー (#4a6fa5) に変更 */
+        .btn { color: #4a6fa5; background: none; border: none; font-size: 0.95rem; font-weight: bold; cursor: pointer; padding: 4px 8px;}
+        /* 削除や更新の赤も、刺激の少ないくすみレッド (#c94a4a) に */
+        .btn-reload { color: #c94a4a; font-size: 1.1rem; }
+        .btn-icon { font-size: 1.3rem; color: #5a5a5a; }
 
         #tank-container {
             flex: 1; display: flex; gap: 40px; padding: 40px 20px;
@@ -35,12 +39,13 @@
 
         /* --- ② タンクのデザイン --- */
         .tank-wrapper { display: flex; flex-direction: column; align-items: center; gap: 15px; min-width: 220px; cursor: pointer; }
-        .tank-lid { width: 45px; height: 16px; background-color: #999; border-radius: 4px; }
+        .tank-lid { width: 45px; height: 16px; background-color: #a4a4a8; border-radius: 4px; }
         
         .tank-body {
             position: relative; width: 200px; height: 380px;
-            background-color: rgba(0, 122, 255, 0.05);
-            border: 5px solid #aaa; border-radius: 16px;
+            /* タンク内部も淡いグレージュトーンに */
+            background-color: rgba(74, 111, 165, 0.03);
+            border: 5px solid #b5b5b9; border-radius: 16px;
             overflow: hidden;
             transform: translateZ(0);
             -webkit-mask-image: -webkit-radial-gradient(white, black);
@@ -51,7 +56,10 @@
             display: flex; flex-direction: column; justify-content: space-evenly; pointer-events: none; z-index: 10;
         }
         .tick { display: flex; justify-content: space-between; width: 100%; }
-        .tick::before, .tick::after { content: ''; width: 12px; height: 2px; background-color: #aaa; }
+        .tick::before, .tick::after { content: ''; width: 100px; height: 1.5px; background-color: #c8c8cc; }
+        /* 目盛り自体の長さを少し優しく */
+        .tick::before { width: 10px; }
+        .tick::after { width: 10px; }
         
         .water-container {
             position: absolute; top: 0; left: 0; right: 0; bottom: -2px;
@@ -60,32 +68,34 @@
         
         .water-layer {
             width: 100%; transition: height 0.8s ease-out; flex-shrink: 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.4);
+            border-top: 1px solid rgba(255, 255, 255, 0.45);
         }
         
         .tank-total {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 20; background: rgba(255, 255, 255, 0.85);
-            padding: 12px 16px; border-radius: 12px; font-weight: bold; color: #333; 
-            backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; gap: 4px;
-            min-width: 100px; pointer-events: none;
+            z-index: 20; background: rgba(255, 255, 255, 0.9);
+            padding: 10px 14px; border-radius: 12px; font-weight: bold; color: #444; 
+            backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; gap: 3px;
+            min-width: 90px; pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
-        .tank-total-amount { font-size: 1.4rem; }
-        .tank-budget-text { font-size: 0.85rem; color: #666; font-weight: normal; }
+        .tank-total-amount { font-size: 1.3rem; color: #222; }
+        .tank-budget-text { font-size: 0.8rem; color: #777; font-weight: normal; }
         
-        .category-name { font-size: 1.2rem; font-weight: bold; color: #333; }
+        .category-name { font-size: 1.15rem; font-weight: bold; color: #444; }
         
+        /* ＋ボタン（マイルドな青緑アースカラーに） */
         .fab {
             position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
-            background-color: #32ade6; color: white; border-radius: 30px;
-            font-size: 36px; line-height: 60px; text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; border: none; z-index: 50;
+            background-color: #559cad; color: white; border-radius: 30px;
+            font-size: 36px; line-height: 56px; text-align: center;
+            box-shadow: 0 4px 12px rgba(85,156,173,0.3); cursor: pointer; border: none; z-index: 50;
         }
 
         /* --- ③ モーダル（ボトムシート）のデザイン --- */
         .overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none;
+            background: rgba(0,0,0,0.4); opacity: 0; pointer-events: none;
             transition: opacity 0.3s ease; z-index: 100;
         }
         .overlay.active { opacity: 1; pointer-events: auto; }
@@ -93,49 +103,51 @@
         .modal {
             position: fixed; bottom: -100%; left: 0; right: 0;
             background: #fff; padding: 24px 20px 40px 20px;
-            border-radius: 24px 24px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            border-radius: 24px 24px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
             transition: bottom 0.3s ease; z-index: 101;
             display: flex; flex-direction: column; gap: 16px;
             padding-bottom: max(40px, env(safe-area-inset-bottom));
-            max-height: 85vh; /* 画面をはみ出さないように */
+            max-height: 85vh;
         }
         .modal.active { bottom: 0; }
-        .modal h2 { margin: 0; font-size: 1.3rem; color: #333; text-align: center; }
+        .modal h2 { margin: 0; font-size: 1.25rem; color: #333; text-align: center; }
         
         .input-group { display: flex; flex-direction: column; gap: 8px; }
-        .input-group label { font-size: 0.9rem; color: #666; font-weight: bold; }
+        .input-group label { font-size: 0.85rem; color: #666; font-weight: bold; }
         .input-group input, .input-group select {
-            font-size: 1.1rem; padding: 12px; border: 1px solid #ddd;
-            border-radius: 10px; background-color: #f9f9f9;
+            font-size: 1.05rem; padding: 12px; border: 1px solid #e0e0e0;
+            border-radius: 10px; background-color: #fbfbfb;
+            color: #333;
         }
         input[type="date"] { font-family: -apple-system, sans-serif; }
 
         .modal-actions { display: flex; gap: 15px; margin-top: 10px; }
         .modal-actions button {
-            flex: 1; padding: 14px; font-size: 1.1rem; border-radius: 12px;
+            flex: 1; padding: 14px; font-size: 1.05rem; border-radius: 12px;
             border: none; font-weight: bold; cursor: pointer;
         }
-        .btn-cancel { background: #e5e5ea; color: #333; }
-        .btn-save { background: #007aff; color: white; }
+        .btn-cancel { background: #e9e9ed; color: #444; }
+        .btn-save { background: #4a6fa5; color: white; }
 
         #detail-modal { height: 80vh; }
         .history-item {
             display: flex; align-items: center; background: #fff; padding: 14px 16px; 
-            border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); margin-bottom: 12px;
-            border: 1px solid #eee; gap: 10px;
+            border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); margin-bottom: 12px;
+            border: 1px solid #e9e9e9; gap: 10px;
         }
         .history-actions { display: flex; gap: 8px; flex-shrink: 0; }
-        .btn-edit { background-color: #34c759; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .btn-delete { background-color: #ff3b30; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
+        /* 編集・削除ボタンもマイルドカラーに */
+        .btn-edit { background-color: #72a276; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-delete { background-color: #c95a5a; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        /* カテゴリ管理用のデザイン */
         .category-item {
             display: flex; align-items: center; justify-content: space-between;
-            background: #f9f9f9; padding: 10px 15px; border-radius: 8px; border: 1px solid #ddd;
+            background: #fdfdfd; padding: 10px 15px; border-radius: 8px; border: 1px solid #e5e5e9;
         }
         .category-actions { display: flex; gap: 6px; }
-        .btn-move { background: #e5e5ea; color: #333; border: none; width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; }
-        .btn-move:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-move { background: #e5e5ea; color: #444; border: none; width: 32px; height: 32px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-weight: bold; }
+        .btn-move:disabled { opacity: 0.2; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -203,403 +215,24 @@
 
     <!-- ③ 履歴詳細モーダル -->
     <div id="detail-modal" class="modal">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
-            <h2 id="detail-title" style="margin: 0; font-size: 1.5rem;">詳細</h2>
-            <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px;" onclick="closeAllModals()">閉じる</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eef; padding-bottom: 15px; margin-bottom: 15px;">
+            <h2 id="detail-title" style="margin: 0; font-size: 1.4rem; color: #333;">詳細</h2>
+            <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px; font-weight: bold;" onclick="closeAllModals()">閉じる</button>
         </div>
         <div id="detail-content" style="overflow-y: auto; flex: 1;"></div>
     </div>
 
-    <!-- ④ 設定・データ管理モーダル（カテゴリ管理機能追加） -->
+    <!-- ④ 設定・データ管理モーダル -->
     <div id="settings-modal" class="modal" style="overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 5px;">
-            <h2 style="margin: 0; font-size: 1.5rem;">設定・データ管理</h2>
-            <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px;" onclick="closeAllModals()">閉じる</button>
+            <h2 style="margin: 0; font-size: 1.4rem;">設定・データ管理</h2>
+            <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px; font-weight: bold;" onclick="closeAllModals()">閉じる</button>
         </div>
         
-        <!-- カテゴリ管理エリア -->
         <div class="input-group">
             <label>カテゴリの管理・並べ替え</label>
-            <div id="category-manage-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
-                <!-- ここにカテゴリ一覧が生成されます -->
-            </div>
-            <button class="btn-save" onclick="addCategory()" style="background:#34c759; padding: 12px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">＋ 新しいカテゴリを追加</button>
+            <div id="category-manage-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;"></div>
+            <button class="btn-save" onclick="addCategory()" style="background:#528a55; padding: 12px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.05rem; cursor:pointer;">＋ 新しいカテゴリを追加</button>
         </div>
         
-        <hr style="border: none; border-top: 1px solid #eee; margin: 15px 0;">
         
-        <!-- バックアップエリア -->
-        <div class="input-group">
-            <label>データのバックアップ（書き出し）</label>
-            <button class="btn-save" onclick="exportData()" style="padding: 12px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">📥 バックアップを保存</button>
-            <p style="font-size: 0.8rem; color: #666; margin-top: 0;">※iPadの「ファイル」アプリに保存されます</p>
-        </div>
-        
-        <div class="input-group">
-            <label>データの復元（読み込み）</label>
-            <button class="btn-cancel" onclick="document.getElementById('import-file').click()" style="padding: 12px; border-radius: 12px; border:none; font-weight:bold; font-size:1.1rem; cursor:pointer;">📤 バックアップを復元</button>
-            <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
-        </div>
-    </div>
-
-    <!-- --- ⑤ 動作とデータの仕組み --- -->
-    <script>
-        let categories = JSON.parse(localStorage.getItem('wl_categories')) || ['食費', '日用品'];
-        let records = JSON.parse(localStorage.getItem('wl_records')) || [];
-        let budgets = JSON.parse(localStorage.getItem('wl_budgets')) || {};
-        
-        let currentEditId = null;
-        let currentOpenCategory = '';
-        const waterColors = ['#007aff', '#34c759', '#ff9500', '#af52de', '#ff2d55', '#5ac8fa', '#ffcc00'];
-
-        let currentDisplayDate = new Date();
-        currentDisplayDate.setDate(1);
-
-        function updateMonthDisplay() {
-            const y = currentDisplayDate.getFullYear();
-            const m = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
-            document.getElementById('current-month-display').innerText = `${y}年${m}月`;
-            renderTanks();
-        }
-
-        function prevMonth() { currentDisplayDate.setMonth(currentDisplayDate.getMonth() - 1); updateMonthDisplay(); }
-        function nextMonth() { currentDisplayDate.setMonth(currentDisplayDate.getMonth() + 1); updateMonthDisplay(); }
-
-        function renderTanks() {
-            const container = document.getElementById('tank-container');
-            container.innerHTML = '';
-            
-            const targetY = currentDisplayDate.getFullYear();
-            const targetM = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
-            const targetMonthStr = `${targetY}-${targetM}`;
-            
-            categories.forEach(category => {
-                const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
-                const totalSpent = categoryRecords.reduce((sum, record) => sum + record.amount, 0);
-                const categoryBudget = budgets[category] || 10000;
-                const maxHeight = 380;
-                
-                let waterHTML = '';
-                categoryRecords.forEach((record, index) => {
-                    let h = (record.amount / categoryBudget) * maxHeight;
-                    let color = waterColors[index % waterColors.length];
-                    waterHTML += `<div class="water-layer" style="height: 0px; background-color: ${color};" data-target-height="${h}px"></div>`;
-                });
-
-                const tankHTML = `
-                    <div class="tank-wrapper" onclick="showDetailModal('${category}')">
-                        <div class="tank-lid"></div>
-                        <div class="tank-body">
-                            <div class="tank-ticks">
-                                <div class="tick"></div><div class="tick"></div><div class="tick"></div>
-                                <div class="tick"></div><div class="tick"></div><div class="tick"></div>
-                            </div>
-                            <div class="water-container">
-                                ${waterHTML}
-                            </div>
-                            <div class="tank-total">
-                                <div class="tank-total-amount">${totalSpent}円</div>
-                                <div class="tank-budget-text">予算: ${categoryBudget}円</div>
-                            </div>
-                        </div>
-                        <div class="category-name">${category}</div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', tankHTML);
-            });
-            
-            setTimeout(() => {
-                document.querySelectorAll('.water-layer').forEach(water => {
-                    water.style.height = water.getAttribute('data-target-height');
-                });
-            }, 50);
-        }
-
-        function closeAllModals() {
-            document.getElementById('overlay').classList.remove('active');
-            document.getElementById('expense-modal').classList.remove('active');
-            document.getElementById('budget-modal').classList.remove('active');
-            document.getElementById('detail-modal').classList.remove('active');
-            document.getElementById('settings-modal').classList.remove('active');
-            currentEditId = null;
-        }
-
-        // --- カテゴリ管理・並べ替え機能 ---
-        function renderCategoryManager() {
-            const container = document.getElementById('category-manage-list');
-            container.innerHTML = '';
-            
-            categories.forEach((cat, index) => {
-                container.innerHTML += `
-                    <div class="category-item">
-                        <span style="font-weight:bold; font-size:1.1rem; color:#333;">${cat}</span>
-                        <div class="category-actions">
-                            <button class="btn-move" onclick="moveCategory(${index}, -1)" ${index === 0 ? 'disabled' : ''}>▲</button>
-                            <button class="btn-move" onclick="moveCategory(${index}, 1)" ${index === categories.length - 1 ? 'disabled' : ''}>▼</button>
-                            <button class="btn-delete" style="width:32px; height:32px; border-radius:8px;" onclick="deleteCategoryWhole(${index})">×</button>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function moveCategory(index, direction) {
-            if (index + direction < 0 || index + direction >= categories.length) return;
-            // 順番を入れ替える
-            const temp = categories[index];
-            categories[index] = categories[index + direction];
-            categories[index + direction] = temp;
-            
-            localStorage.setItem('wl_categories', JSON.stringify(categories));
-            renderCategoryManager();
-            renderTanks();
-        }
-
-        function deleteCategoryWhole(index) {
-            const cat = categories[index];
-            if (!confirm(`カテゴリ「${cat}」を削除しますか？\n\n※このカテゴリの「過去の支出記録」と「予算設定」もすべて削除されます。この操作は元に戻せません。`)) {
-                return;
-            }
-            
-            // カテゴリ、記録、予算から該当するものをすべて消去
-            categories.splice(index, 1);
-            records = records.filter(r => r.category !== cat);
-            delete budgets[cat];
-            
-            localStorage.setItem('wl_categories', JSON.stringify(categories));
-            localStorage.setItem('wl_records', JSON.stringify(records));
-            localStorage.setItem('wl_budgets', JSON.stringify(budgets));
-            
-            renderCategoryManager();
-            renderTanks();
-        }
-
-        function showSettingsModal() {
-            renderCategoryManager(); // 開くたびにリストを最新にする
-            document.getElementById('overlay').classList.add('active');
-            document.getElementById('settings-modal').classList.add('active');
-        }
-
-        function addCategory() {
-            let newCat = prompt("新しいカテゴリ名を入力してください:");
-            if (newCat && newCat.trim() !== "") {
-                const trimmedCat = newCat.trim();
-                if (categories.includes(trimmedCat)) {
-                    alert("そのカテゴリは既に存在します。");
-                    return;
-                }
-                categories.push(trimmedCat);
-                localStorage.setItem('wl_categories', JSON.stringify(categories));
-                renderTanks();
-                renderCategoryManager(); // モーダル内のリストも即座に更新
-            }
-        }
-
-        // --- 支出入力 ---
-        function showExpenseModal() {
-            if (categories.length === 0) return alert("先にカテゴリを追加してください。");
-            document.getElementById('expense-modal-title').innerText = "支出の入力";
-            const select = document.getElementById('expense-category');
-            select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            
-            if (!currentEditId) {
-                const today = new Date();
-                const y = today.getFullYear();
-                const m = String(today.getMonth() + 1).padStart(2, '0');
-                const d = String(today.getDate()).padStart(2, '0');
-                document.getElementById('expense-date').value = `${y}-${m}-${d}`;
-                document.getElementById('expense-amount').value = '';
-                document.getElementById('expense-memo').value = '';
-            }
-            document.getElementById('overlay').classList.add('active');
-            document.getElementById('expense-modal').classList.add('active');
-        }
-
-        function saveExpense() {
-            const dateVal = document.getElementById('expense-date').value;
-            const cat = document.getElementById('expense-category').value;
-            const amt = parseInt(document.getElementById('expense-amount').value, 10);
-            const memo = document.getElementById('expense-memo').value || '';
-            
-            if (!dateVal) return alert("日付を選択してください");
-            if (!amt || isNaN(amt)) return alert("正しい金額を入力してください");
-            
-            if (currentEditId) {
-                const index = records.findIndex(r => r.id === currentEditId);
-                if (index !== -1) {
-                    records[index].date = dateVal;
-                    records[index].category = cat;
-                    records[index].amount = amt;
-                    records[index].memo = memo;
-                }
-            } else {
-                records.push({ id: Date.now(), category: cat, amount: amt, memo: memo, date: dateVal });
-            }
-            
-            localStorage.setItem('wl_records', JSON.stringify(records));
-            
-            const savedDateObj = new Date(dateVal);
-            currentDisplayDate.setFullYear(savedDateObj.getFullYear());
-            currentDisplayDate.setMonth(savedDateObj.getMonth());
-            updateMonthDisplay();
-            closeAllModals();
-        }
-
-        function editRecord(id) {
-            const record = records.find(r => r.id === id);
-            if (!record) return;
-            currentEditId = id;
-            document.getElementById('expense-modal-title').innerText = "支出の修正";
-            
-            let dStr = record.date;
-            if (dStr.includes('T')) dStr = dStr.split('T')[0];
-            document.getElementById('expense-date').value = dStr;
-            
-            const select = document.getElementById('expense-category');
-            select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            select.value = record.category;
-            
-            document.getElementById('expense-amount').value = record.amount;
-            document.getElementById('expense-memo').value = record.memo || '';
-            
-            document.getElementById('detail-modal').classList.remove('active');
-            document.getElementById('expense-modal').classList.add('active');
-        }
-
-        function deleteRecord(id) {
-            if (!confirm("この記録を削除しますか？")) return;
-            records = records.filter(r => r.id !== id);
-            localStorage.setItem('wl_records', JSON.stringify(records));
-            renderTanks();
-            if (currentOpenCategory) showDetailModal(currentOpenCategory);
-        }
-
-        // --- 予算設定 ---
-        function showBudgetModal() {
-            if (categories.length === 0) return alert("先にカテゴリを追加してください。");
-            const select = document.getElementById('budget-category');
-            select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            loadExistingBudget();
-            document.getElementById('overlay').classList.add('active');
-            document.getElementById('budget-modal').classList.add('active');
-        }
-
-        function loadExistingBudget() {
-            const cat = document.getElementById('budget-category').value;
-            document.getElementById('budget-amount').value = budgets[cat] || '';
-        }
-
-        function saveBudget() {
-            const cat = document.getElementById('budget-category').value;
-            const amt = parseInt(document.getElementById('budget-amount').value, 10);
-            if (!amt || isNaN(amt)) return alert("正しい金額を入力してください");
-            budgets[cat] = amt; 
-            localStorage.setItem('wl_budgets', JSON.stringify(budgets));
-            renderTanks();
-            closeAllModals();
-        }
-
-        // --- 履歴詳細 ---
-        function showDetailModal(category) {
-            currentOpenCategory = category;
-            const targetY = currentDisplayDate.getFullYear();
-            const targetM = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
-            const targetMonthStr = `${targetY}-${targetM}`;
-            
-            document.getElementById('detail-title').innerText = `${category} (${targetM}月) の履歴`;
-            const content = document.getElementById('detail-content');
-            
-            const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
-            let listHTML = '';
-            
-            const reversedRecords = [...categoryRecords].reverse();
-            
-            reversedRecords.forEach((record, revIndex) => {
-                const originalIndex = categoryRecords.length - 1 - revIndex;
-                const color = waterColors[originalIndex % waterColors.length];
-                
-                let displayDate = '';
-                if (record.date.includes('T')) {
-                    const d = new Date(record.date);
-                    displayDate = (d.getMonth() + 1) + '/' + d.getDate();
-                } else {
-                    const parts = record.date.split('-'); 
-                    displayDate = parseInt(parts[1]) + '/' + parseInt(parts[2]);
-                }
-                
-                if (!record.id) { record.id = new Date(record.date).getTime() + Math.random(); }
-                
-                listHTML += `
-                    <div class="history-item">
-                        <div style="width: 20px; height: 20px; border-radius: 10px; background-color: ${color}; flex-shrink: 0;"></div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-size: 0.8rem; color: #888;">${displayDate}</div>
-                            <div style="font-weight: bold; font-size: 1.05rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${record.memo || '入力なし'}</div>
-                        </div>
-                        <div style="font-size: 1.2rem; font-weight: bold; color: #333; margin-right: 4px;">${record.amount}円</div>
-                        
-                        <div class="history-actions">
-                            <button class="btn-edit" onclick="event.stopPropagation(); editRecord(${record.id})">✎</button>
-                            <button class="btn-delete" onclick="event.stopPropagation(); deleteRecord(${record.id})">×</button>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            if (categoryRecords.length === 0) listHTML = '<p style="text-align: center; color: #888; margin-top: 40px;">まだ記録がありません</p>';
-            
-            content.innerHTML = listHTML;
-            document.getElementById('overlay').classList.add('active');
-            document.getElementById('detail-modal').classList.add('active');
-        }
-
-        // --- データエクスポート ---
-        function exportData() {
-            const data = { categories: categories, records: records, budgets: budgets };
-            const jsonStr = JSON.stringify(data, null, 2);
-            const blob = new Blob([jsonStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const d = new Date();
-            const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
-            a.download = `kakeibo_backup_${dateStr}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // --- データインポート ---
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            if (!confirm("現在のデータはすべて消去され、バックアップデータで上書きされます。本当によろしいですか？")) {
-                event.target.value = ''; 
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (imported.categories && imported.records && imported.budgets) {
-                        categories = imported.categories;
-                        records = imported.records;
-                        budgets = imported.budgets;
-                        localStorage.setItem('wl_categories', JSON.stringify(categories));
-                        localStorage.setItem('wl_records', JSON.stringify(records));
-                        localStorage.setItem('wl_budgets', JSON.stringify(budgets));
-                        alert("データの復元が完了しました！");
-                        closeAllModals();
-                        updateMonthDisplay();
-                    } else { alert("ファイル形式が正しくありません。"); }
-                } catch (error) { alert("ファイルの読み込みに失敗しました。"); }
-                event.target.value = ''; 
-            };
-            reader.readAsText(file);
-        }
-
-        updateMonthDisplay();
-    </script>
-</body>
-</html>
