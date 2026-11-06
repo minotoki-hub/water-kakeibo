@@ -19,14 +19,14 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
-        /* 月めくりセレクターのデザイン */
         .month-selector { display: flex; align-items: center; gap: 10px; }
         .month-selector button { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #007aff; padding: 0 5px; }
         .month-selector h1 { margin: 0; font-size: 1.2rem; color: #333; min-width: 100px; text-align: center; }
         
-        .header-buttons { display: flex; gap: 15px; }
-        .btn { color: #007aff; background: none; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; }
-        .btn-reload { color: #ff3b30; }
+        .header-buttons { display: flex; gap: 12px; align-items: center; }
+        .btn { color: #007aff; background: none; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; padding: 4px 8px;}
+        .btn-reload { color: #ff3b30; font-size: 1.2rem; }
+        .btn-icon { font-size: 1.4rem; }
 
         #tank-container {
             flex: 1; display: flex; gap: 40px; padding: 40px 20px;
@@ -107,7 +107,6 @@
             font-size: 1.1rem; padding: 12px; border: 1px solid #ddd;
             border-radius: 10px; background-color: #f9f9f9;
         }
-        /* 日付ピッカー用調整 */
         input[type="date"] { font-family: -apple-system, sans-serif; }
 
         .modal-actions { display: flex; gap: 15px; margin-top: 10px; }
@@ -125,16 +124,8 @@
             border: 1px solid #eee; gap: 10px;
         }
         .history-actions { display: flex; gap: 8px; flex-shrink: 0; }
-        .btn-edit {
-            background-color: #34c759; color: white; border: none; width: 34px; height: 34px;
-            border-radius: 17px; font-size: 1rem; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .btn-delete {
-            background-color: #ff3b30; color: white; border: none; width: 34px; height: 34px;
-            border-radius: 17px; font-size: 1.2rem; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .btn-edit { background-color: #34c759; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-delete { background-color: #ff3b30; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -146,9 +137,9 @@
             <button onclick="nextMonth()">▶</button>
         </div>
         <div class="header-buttons">
-            <button class="btn btn-reload" onclick="location.reload(true)">↻ 強制更新</button>
-            <button class="btn" onclick="showBudgetModal()">予算設定</button>
-            <button class="btn" onclick="addCategory()">カテゴリ追加</button>
+            <button class="btn btn-reload" onclick="location.reload(true)">↻</button>
+            <button class="btn" onclick="showBudgetModal()">予算</button>
+            <button class="btn btn-icon" onclick="showSettingsModal()">⚙️</button>
         </div>
     </header>
 
@@ -158,7 +149,7 @@
 
     <div id="overlay" class="overlay" onclick="closeAllModals()"></div>
 
-    <!-- ① 支出入力（カレンダー付き）用モーダル -->
+    <!-- ① 支出入力モーダル -->
     <div id="expense-modal" class="modal">
         <h2 id="expense-modal-title">支出の入力</h2>
         <div class="input-group">
@@ -183,7 +174,7 @@
         </div>
     </div>
 
-    <!-- ② 予算設定用モーダル -->
+    <!-- ② 予算設定モーダル -->
     <div id="budget-modal" class="modal">
         <h2>予算の設定</h2>
         <div class="input-group">
@@ -200,18 +191,44 @@
         </div>
     </div>
 
-    <!-- ③ 履歴の詳細モーダル -->
+    <!-- ③ 履歴詳細モーダル -->
     <div id="detail-modal" class="modal">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
             <h2 id="detail-title" style="margin: 0; font-size: 1.5rem;">詳細</h2>
             <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px;" onclick="closeAllModals()">閉じる</button>
         </div>
-        <div id="detail-content" style="overflow-y: auto; flex: 1;">
-            <!-- ここにリストが生成されます -->
+        <div id="detail-content" style="overflow-y: auto; flex: 1;"></div>
+    </div>
+
+    <!-- ④ 設定・データ管理モーダル -->
+    <div id="settings-modal" class="modal">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 5px;">
+            <h2 style="margin: 0; font-size: 1.5rem;">設定・データ管理</h2>
+            <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px;" onclick="closeAllModals()">閉じる</button>
+        </div>
+        
+        <div class="input-group">
+            <button class="btn-save" onclick="addCategory()" style="background:#34c759; padding: 14px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">＋ 新しいカテゴリを追加</button>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 10px 0;">
+        
+        <div class="input-group">
+            <label>データのバックアップ（書き出し）</label>
+            <button class="btn-save" onclick="exportData()" style="padding: 14px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">📥 バックアップを保存</button>
+            <p style="font-size: 0.8rem; color: #666; margin-top: 0;">※iPadの「ファイル」アプリに保存されます</p>
+        </div>
+        
+        <div class="input-group">
+            <label>データの復元（読み込み）</label>
+            <!-- input fileは隠して、ボタンから呼び出す -->
+            <button class="btn-cancel" onclick="document.getElementById('import-file').click()" style="padding: 14px; border-radius: 12px; border:none; font-weight:bold; font-size:1.1rem; cursor:pointer;">📤 バックアップを復元</button>
+            <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+            <p style="font-size: 0.8rem; color: #666; margin-top: 0;">※現在のデータは上書きされます</p>
         </div>
     </div>
 
-    <!-- --- ④ 動作とデータの仕組み --- -->
+    <!-- --- ⑤ 動作とデータの仕組み --- -->
     <script>
         let categories = JSON.parse(localStorage.getItem('wl_categories')) || ['食費', '日用品'];
         let records = JSON.parse(localStorage.getItem('wl_records')) || [];
@@ -221,39 +238,28 @@
         let currentOpenCategory = '';
         const waterColors = ['#007aff', '#34c759', '#ff9500', '#af52de', '#ff2d55', '#5ac8fa', '#ffcc00'];
 
-        // --- 月めくり機能（現在表示している月を管理） ---
         let currentDisplayDate = new Date();
-        currentDisplayDate.setDate(1); // 月末のオーバーフロー防止のために1日に固定
+        currentDisplayDate.setDate(1);
 
         function updateMonthDisplay() {
             const y = currentDisplayDate.getFullYear();
             const m = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
             document.getElementById('current-month-display').innerText = `${y}年${m}月`;
-            renderTanks(); // 月が変わったらタンクを描画し直す
+            renderTanks();
         }
 
-        function prevMonth() {
-            currentDisplayDate.setMonth(currentDisplayDate.getMonth() - 1);
-            updateMonthDisplay();
-        }
+        function prevMonth() { currentDisplayDate.setMonth(currentDisplayDate.getMonth() - 1); updateMonthDisplay(); }
+        function nextMonth() { currentDisplayDate.setMonth(currentDisplayDate.getMonth() + 1); updateMonthDisplay(); }
 
-        function nextMonth() {
-            currentDisplayDate.setMonth(currentDisplayDate.getMonth() + 1);
-            updateMonthDisplay();
-        }
-
-        // --- 描画処理 ---
         function renderTanks() {
             const container = document.getElementById('tank-container');
             container.innerHTML = '';
             
-            // 現在の「YYYY-MM」文字列を作成してフィルターに使用
             const targetY = currentDisplayDate.getFullYear();
             const targetM = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
             const targetMonthStr = `${targetY}-${targetM}`;
             
             categories.forEach(category => {
-                // その月、かつ、そのカテゴリの記録だけを抽出
                 const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
                 const totalSpent = categoryRecords.reduce((sum, record) => sum + record.amount, 0);
                 const categoryBudget = budgets[category] || 10000;
@@ -300,7 +306,13 @@
             document.getElementById('expense-modal').classList.remove('active');
             document.getElementById('budget-modal').classList.remove('active');
             document.getElementById('detail-modal').classList.remove('active');
+            document.getElementById('settings-modal').classList.remove('active');
             currentEditId = null;
+        }
+
+        function showSettingsModal() {
+            document.getElementById('overlay').classList.add('active');
+            document.getElementById('settings-modal').classList.add('active');
         }
 
         function showExpenseModal() {
@@ -310,17 +322,14 @@
             select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
             
             if (!currentEditId) {
-                // 新規入力時は「今日」の日付を自動セット
                 const today = new Date();
                 const y = today.getFullYear();
                 const m = String(today.getMonth() + 1).padStart(2, '0');
                 const d = String(today.getDate()).padStart(2, '0');
                 document.getElementById('expense-date').value = `${y}-${m}-${d}`;
-                
                 document.getElementById('expense-amount').value = '';
                 document.getElementById('expense-memo').value = '';
             }
-            
             document.getElementById('overlay').classList.add('active');
             document.getElementById('expense-modal').classList.add('active');
         }
@@ -348,23 +357,19 @@
             
             localStorage.setItem('wl_records', JSON.stringify(records));
             
-            // 保存したデータが含まれる月へ自動的に表示を切り替える
             const savedDateObj = new Date(dateVal);
             currentDisplayDate.setFullYear(savedDateObj.getFullYear());
             currentDisplayDate.setMonth(savedDateObj.getMonth());
             updateMonthDisplay();
-            
             closeAllModals();
         }
 
         function editRecord(id) {
             const record = records.find(r => r.id === id);
             if (!record) return;
-            
             currentEditId = id;
             document.getElementById('expense-modal-title').innerText = "支出の修正";
             
-            // 古いデータ形式（Tで始まる時刻情報付き）を YYYY-MM-DD に変換してセット
             let dStr = record.date;
             if (dStr.includes('T')) dStr = dStr.split('T')[0];
             document.getElementById('expense-date').value = dStr;
@@ -406,7 +411,6 @@
             const cat = document.getElementById('budget-category').value;
             const amt = parseInt(document.getElementById('budget-amount').value, 10);
             if (!amt || isNaN(amt)) return alert("正しい金額を入力してください");
-            
             budgets[cat] = amt; 
             localStorage.setItem('wl_budgets', JSON.stringify(budgets));
             renderTanks();
@@ -415,7 +419,6 @@
 
         function showDetailModal(category) {
             currentOpenCategory = category;
-            
             const targetY = currentDisplayDate.getFullYear();
             const targetM = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
             const targetMonthStr = `${targetY}-${targetM}`;
@@ -423,7 +426,6 @@
             document.getElementById('detail-title').innerText = `${category} (${targetM}月) の履歴`;
             const content = document.getElementById('detail-content');
             
-            // 現在表示している月の記録だけを抽出して表示
             const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
             let listHTML = '';
             
@@ -433,13 +435,12 @@
                 const originalIndex = categoryRecords.length - 1 - revIndex;
                 const color = waterColors[originalIndex % waterColors.length];
                 
-                // 過去データと新しいデータで日付表示を安全に行う
                 let displayDate = '';
                 if (record.date.includes('T')) {
                     const d = new Date(record.date);
                     displayDate = (d.getMonth() + 1) + '/' + d.getDate();
                 } else {
-                    const parts = record.date.split('-'); // YYYY-MM-DD
+                    const parts = record.date.split('-'); 
                     displayDate = parseInt(parts[1]) + '/' + parseInt(parts[2]);
                 }
                 
@@ -462,9 +463,7 @@
                 `;
             });
             
-            if (categoryRecords.length === 0) {
-                listHTML = '<p style="text-align: center; color: #888; margin-top: 40px;">まだ記録がありません</p>';
-            }
+            if (categoryRecords.length === 0) listHTML = '<p style="text-align: center; color: #888; margin-top: 40px;">まだ記録がありません</p>';
             
             content.innerHTML = listHTML;
             document.getElementById('overlay').classList.add('active');
@@ -477,12 +476,73 @@
                 categories.push(newCat.trim());
                 localStorage.setItem('wl_categories', JSON.stringify(categories));
                 renderTanks();
+                closeAllModals(); // 設定モーダルを閉じる
             }
         }
 
-        // 初期化：当月の表示でスタート
+        // --- データエクスポート（バックアップ） ---
+        function exportData() {
+            const data = {
+                categories: categories,
+                records: records,
+                budgets: budgets
+            };
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            
+            const d = new Date();
+            const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+            a.download = `kakeibo_backup_${dateStr}.json`;
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- データインポート（復元） ---
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!confirm("現在のデータはすべて消去され、バックアップデータで上書きされます。本当によろしいですか？")) {
+                event.target.value = ''; 
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    // 簡単な形式チェック
+                    if (imported.categories && imported.records && imported.budgets) {
+                        categories = imported.categories;
+                        records = imported.records;
+                        budgets = imported.budgets;
+                        
+                        localStorage.setItem('wl_categories', JSON.stringify(categories));
+                        localStorage.setItem('wl_records', JSON.stringify(records));
+                        localStorage.setItem('wl_budgets', JSON.stringify(budgets));
+                        
+                        alert("データの復元が完了しました！");
+                        closeAllModals();
+                        updateMonthDisplay();
+                    } else {
+                        alert("ファイル形式が正しくありません。");
+                    }
+                } catch (error) {
+                    alert("ファイルの読み込みに失敗しました。");
+                }
+                event.target.value = ''; 
+            };
+            reader.readAsText(file);
+        }
+
         updateMonthDisplay();
     </script>
 </body>
 </html>
-
