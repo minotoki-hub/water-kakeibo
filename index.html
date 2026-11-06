@@ -6,12 +6,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>家計簿タンク</title>
     <style>
-        /* --- ① 全体のデザインとレイアウト（目に優しいカラー調整） --- */
+        /* --- ① 全体のデザインとレイアウト（目に優しいカラー） --- */
         body {
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: #f4f4f7; margin: 0; padding: 0;
             display: flex; flex-direction: column; height: 100vh;
-            color: #444; /* 文字も真っ黒ではなく、少し柔らかなダークグレーに */
+            color: #444; 
         }
         header {
             background: #fff; 
@@ -21,14 +21,11 @@
         }
         
         .month-selector { display: flex; align-items: center; gap: 10px; }
-        /* 矢印ボタンもくすみブルーに */
         .month-selector button { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #4a6fa5; padding: 0 5px; }
         .month-selector h1 { margin: 0; font-size: 1.15rem; color: #333; min-width: 100px; text-align: center; }
         
         .header-buttons { display: flex; gap: 12px; align-items: center; }
-        /* 目に優しい落ち着いたブルー (#4a6fa5) に変更 */
         .btn { color: #4a6fa5; background: none; border: none; font-size: 0.95rem; font-weight: bold; cursor: pointer; padding: 4px 8px;}
-        /* 削除や更新の赤も、刺激の少ないくすみレッド (#c94a4a) に */
         .btn-reload { color: #c94a4a; font-size: 1.1rem; }
         .btn-icon { font-size: 1.3rem; color: #5a5a5a; }
 
@@ -43,7 +40,6 @@
         
         .tank-body {
             position: relative; width: 200px; height: 380px;
-            /* タンク内部も淡いグレージュトーンに */
             background-color: rgba(74, 111, 165, 0.03);
             border: 5px solid #b5b5b9; border-radius: 16px;
             overflow: hidden;
@@ -57,7 +53,6 @@
         }
         .tick { display: flex; justify-content: space-between; width: 100%; }
         .tick::before, .tick::after { content: ''; width: 100px; height: 1.5px; background-color: #c8c8cc; }
-        /* 目盛り自体の長さを少し優しく */
         .tick::before { width: 10px; }
         .tick::after { width: 10px; }
         
@@ -116,8 +111,7 @@
         .input-group label { font-size: 0.85rem; color: #666; font-weight: bold; }
         .input-group input, .input-group select {
             font-size: 1.05rem; padding: 12px; border: 1px solid #e0e0e0;
-            border-radius: 10px; background-color: #fbfbfb;
-            color: #333;
+            border-radius: 10px; background-color: #fbfbfb; color: #333;
         }
         input[type="date"] { font-family: -apple-system, sans-serif; }
 
@@ -137,7 +131,6 @@
         }
         .history-actions { display: flex; gap: 8px; flex-shrink: 0; }
         
-        /* 編集・削除ボタンもマイルドカラーに */
         .btn-edit { background-color: #72a276; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .btn-delete { background-color: #c95a5a; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
@@ -171,7 +164,7 @@
 
     <div id="overlay" class="overlay" onclick="closeAllModals()"></div>
 
-    <!-- ① 支出入力モーダル -->
+    <!-- モーダル群 -->
     <div id="expense-modal" class="modal">
         <h2 id="expense-modal-title">支出の入力</h2>
         <div class="input-group">
@@ -196,7 +189,6 @@
         </div>
     </div>
 
-    <!-- ② 予算設定モーダル -->
     <div id="budget-modal" class="modal">
         <h2>予算の設定</h2>
         <div class="input-group">
@@ -213,7 +205,6 @@
         </div>
     </div>
 
-    <!-- ③ 履歴詳細モーダル -->
     <div id="detail-modal" class="modal">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eef; padding-bottom: 15px; margin-bottom: 15px;">
             <h2 id="detail-title" style="margin: 0; font-size: 1.4rem; color: #333;">詳細</h2>
@@ -222,7 +213,6 @@
         <div id="detail-content" style="overflow-y: auto; flex: 1;"></div>
     </div>
 
-    <!-- ④ 設定・データ管理モーダル -->
     <div id="settings-modal" class="modal" style="overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 5px;">
             <h2 style="margin: 0; font-size: 1.4rem;">設定・データ管理</h2>
@@ -240,7 +230,6 @@
         <div class="input-group">
             <label>データのバックアップ（書き出し）</label>
             <button class="btn-save" onclick="exportData()" style="padding: 12px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.05rem; cursor:pointer;">📥 バックアップを保存</button>
-            <p style="font-size: 0.8rem; color: #777; margin-top: 0;">※iPadの「ファイル」アプリに保存されます</p>
         </div>
         
         <div class="input-group">
@@ -250,18 +239,28 @@
         </div>
     </div>
 
-    <!-- --- ⑤ 動作とデータの仕組み --- -->
+    <!-- --- ⑤ 動作とデータの仕組み（セーフティ強化版） --- -->
     <script>
-        let categories = JSON.parse(localStorage.getItem('wl_categories')) || ['食費', '日用品'];
-        let records = JSON.parse(localStorage.getItem('wl_records')) || [];
-        let budgets = JSON.parse(localStorage.getItem('wl_budgets')) || {};
+        // ★エラーで処理が止まらないよう、データの読み込みを堅牢にしました
+        let categories = ['食費', '日用品'];
+        let records = [];
+        let budgets = {};
+        
+        try {
+            const savedCat = JSON.parse(localStorage.getItem('wl_categories'));
+            if (savedCat && Array.isArray(savedCat)) categories = savedCat;
+            
+            const savedRec = JSON.parse(localStorage.getItem('wl_records'));
+            if (savedRec && Array.isArray(savedRec)) records = savedRec;
+            
+            const savedBud = JSON.parse(localStorage.getItem('wl_budgets'));
+            if (savedBud && typeof savedBud === 'object') budgets = savedBud;
+        } catch (e) {
+            console.error("データ読み込みエラー", e);
+        }
         
         let currentEditId = null;
         let currentOpenCategory = '';
-        
-        /* --- ★ 目に優しいアース＆くすみカラーパレット ---
-           1. 落ち着いたブルー  2. サージ（くすみ）グリーン  3. 穏やかなオレンジ  
-           4. くすみラベンダー  5. 落ち着いたローズレッド  6. ペールトーンの青緑  7. サンド（黄土）イエロー */
         const waterColors = ['#5b8fb9', '#7ea172', '#d9a05b', '#a484b5', '#c47a82', '#73a9ad', '#d3b15d'];
 
         let currentDisplayDate = new Date();
@@ -281,12 +280,25 @@
             const container = document.getElementById('tank-container');
             container.innerHTML = '';
             
+            // ★カテゴリが0個の時に真っ白にならないようにする特別メッセージ
+            if (categories.length === 0) {
+                container.innerHTML = `
+                    <div style="width: 100%; text-align: center; color: #777; margin-top: 50px;">
+                        <div style="font-size: 3rem; margin-bottom: 15px;">📝</div>
+                        <p style="font-size: 1.1rem; font-weight: bold;">カテゴリがありません</p>
+                        <p style="font-size: 0.9rem;">右上の「⚙️」ボタンから新しいカテゴリを追加してください。</p>
+                    </div>
+                `;
+                return;
+            }
+            
             const targetY = currentDisplayDate.getFullYear();
             const targetM = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
             const targetMonthStr = `${targetY}-${targetM}`;
             
             categories.forEach(category => {
-                const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
+                // ★日付データが壊れていてもフリーズしないように安全対策（r.date && を追加）
+                const categoryRecords = records.filter(r => r.category === category && r.date && r.date.startsWith(targetMonthStr));
                 const totalSpent = categoryRecords.reduce((sum, record) => sum + record.amount, 0);
                 const categoryBudget = budgets[category] || 10000;
                 const maxHeight = 380;
@@ -339,7 +351,6 @@
         function renderCategoryManager() {
             const container = document.getElementById('category-manage-list');
             container.innerHTML = '';
-            
             categories.forEach((cat, index) => {
                 container.innerHTML += `
                     <div class="category-item">
@@ -359,7 +370,6 @@
             const temp = categories[index];
             categories[index] = categories[index + direction];
             categories[index + direction] = temp;
-            
             localStorage.setItem('wl_categories', JSON.stringify(categories));
             renderCategoryManager();
             renderTanks();
@@ -367,18 +377,13 @@
 
         function deleteCategoryWhole(index) {
             const cat = categories[index];
-            if (!confirm(`カテゴリ「${cat}」を削除しますか？\n\n※このカテゴリの「過去の支出記録」と「予算設定」もすべて削除されます。この操作は元に戻せません。`)) {
-                return;
-            }
-            
+            if (!confirm(`カテゴリ「${cat}」を削除しますか？\n\n※このカテゴリの記録と予算も削除されます。`)) return;
             categories.splice(index, 1);
             records = records.filter(r => r.category !== cat);
             delete budgets[cat];
-            
             localStorage.setItem('wl_categories', JSON.stringify(categories));
             localStorage.setItem('wl_records', JSON.stringify(records));
             localStorage.setItem('wl_budgets', JSON.stringify(budgets));
-            
             renderCategoryManager();
             renderTanks();
         }
@@ -393,10 +398,7 @@
             let newCat = prompt("新しいカテゴリ名を入力してください:");
             if (newCat && newCat.trim() !== "") {
                 const trimmedCat = newCat.trim();
-                if (categories.includes(trimmedCat)) {
-                    alert("そのカテゴリは既に存在します。");
-                    return;
-                }
+                if (categories.includes(trimmedCat)) return alert("そのカテゴリは既に存在します。");
                 categories.push(trimmedCat);
                 localStorage.setItem('wl_categories', JSON.stringify(categories));
                 renderTanks();
@@ -405,7 +407,7 @@
         }
 
         function showExpenseModal() {
-            if (categories.length === 0) return alert("先にカテゴリを追加してください。");
+            if (categories.length === 0) return alert("先に右上の⚙️からカテゴリを追加してください。");
             document.getElementById('expense-modal-title').innerText = "支出の入力";
             const select = document.getElementById('expense-category');
             select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -443,7 +445,6 @@
             } else {
                 records.push({ id: Date.now(), category: cat, amount: amt, memo: memo, date: dateVal });
             }
-            
             localStorage.setItem('wl_records', JSON.stringify(records));
             
             const savedDateObj = new Date(dateVal);
@@ -459,7 +460,7 @@
             currentEditId = id;
             document.getElementById('expense-modal-title').innerText = "支出の修正";
             
-            let dStr = record.date;
+            let dStr = record.date || '';
             if (dStr.includes('T')) dStr = dStr.split('T')[0];
             document.getElementById('expense-date').value = dStr;
             
@@ -483,7 +484,7 @@
         }
 
         function showBudgetModal() {
-            if (categories.length === 0) return alert("先にカテゴリを追加してください。");
+            if (categories.length === 0) return alert("先に右上の⚙️からカテゴリを追加してください。");
             const select = document.getElementById('budget-category');
             select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
             loadExistingBudget();
@@ -515,7 +516,7 @@
             document.getElementById('detail-title').innerText = `${category} (${targetM}月) の履歴`;
             const content = document.getElementById('detail-content');
             
-            const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
+            const categoryRecords = records.filter(r => r.category === category && r.date && r.date.startsWith(targetMonthStr));
             let listHTML = '';
             
             const reversedRecords = [...categoryRecords].reverse();
@@ -524,16 +525,21 @@
                 const originalIndex = categoryRecords.length - 1 - revIndex;
                 const color = waterColors[originalIndex % waterColors.length];
                 
-                let displayDate = '';
-                if (record.date.includes('T')) {
-                    const d = new Date(record.date);
-                    displayDate = (d.getMonth() + 1) + '/' + d.getDate();
-                } else {
-                    const parts = record.date.split('-'); 
-                    displayDate = parseInt(parts[1]) + '/' + parseInt(parts[2]);
+                // ★日付が無い古いデータが混ざっていてもエラーにならないように安全に変換
+                let displayDate = '日付なし';
+                if (record.date) {
+                    if (record.date.includes('T')) {
+                        const d = new Date(record.date);
+                        displayDate = (d.getMonth() + 1) + '/' + d.getDate();
+                    } else {
+                        const parts = record.date.split('-'); 
+                        if (parts.length >= 3) {
+                            displayDate = parseInt(parts[1]) + '/' + parseInt(parts[2]);
+                        }
+                    }
                 }
                 
-                if (!record.id) { record.id = new Date(record.date).getTime() + Math.random(); }
+                if (!record.id) { record.id = new Date(record.date || Date.now()).getTime() + Math.random(); }
                 
                 listHTML += `
                     <div class="history-item">
