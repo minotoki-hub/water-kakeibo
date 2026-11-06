@@ -97,6 +97,7 @@
             transition: bottom 0.3s ease; z-index: 101;
             display: flex; flex-direction: column; gap: 16px;
             padding-bottom: max(40px, env(safe-area-inset-bottom));
+            max-height: 85vh; /* 画面をはみ出さないように */
         }
         .modal.active { bottom: 0; }
         .modal h2 { margin: 0; font-size: 1.3rem; color: #333; text-align: center; }
@@ -126,6 +127,15 @@
         .history-actions { display: flex; gap: 8px; flex-shrink: 0; }
         .btn-edit { background-color: #34c759; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .btn-delete { background-color: #ff3b30; color: white; border: none; width: 34px; height: 34px; border-radius: 17px; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* カテゴリ管理用のデザイン */
+        .category-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #f9f9f9; padding: 10px 15px; border-radius: 8px; border: 1px solid #ddd;
+        }
+        .category-actions { display: flex; gap: 6px; }
+        .btn-move { background: #e5e5ea; color: #333; border: none; width: 32px; height: 32px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: bold; }
+        .btn-move:disabled { opacity: 0.3; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -200,31 +210,35 @@
         <div id="detail-content" style="overflow-y: auto; flex: 1;"></div>
     </div>
 
-    <!-- ④ 設定・データ管理モーダル -->
-    <div id="settings-modal" class="modal">
+    <!-- ④ 設定・データ管理モーダル（カテゴリ管理機能追加） -->
+    <div id="settings-modal" class="modal" style="overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 5px;">
             <h2 style="margin: 0; font-size: 1.5rem;">設定・データ管理</h2>
             <button class="btn-cancel" style="padding: 8px 16px; border-radius: 8px;" onclick="closeAllModals()">閉じる</button>
         </div>
         
+        <!-- カテゴリ管理エリア -->
         <div class="input-group">
-            <button class="btn-save" onclick="addCategory()" style="background:#34c759; padding: 14px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">＋ 新しいカテゴリを追加</button>
+            <label>カテゴリの管理・並べ替え</label>
+            <div id="category-manage-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+                <!-- ここにカテゴリ一覧が生成されます -->
+            </div>
+            <button class="btn-save" onclick="addCategory()" style="background:#34c759; padding: 12px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">＋ 新しいカテゴリを追加</button>
         </div>
         
-        <hr style="border: none; border-top: 1px solid #eee; margin: 10px 0;">
+        <hr style="border: none; border-top: 1px solid #eee; margin: 15px 0;">
         
+        <!-- バックアップエリア -->
         <div class="input-group">
             <label>データのバックアップ（書き出し）</label>
-            <button class="btn-save" onclick="exportData()" style="padding: 14px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">📥 バックアップを保存</button>
+            <button class="btn-save" onclick="exportData()" style="padding: 12px; border-radius: 12px; border:none; color:white; font-weight:bold; font-size:1.1rem; cursor:pointer;">📥 バックアップを保存</button>
             <p style="font-size: 0.8rem; color: #666; margin-top: 0;">※iPadの「ファイル」アプリに保存されます</p>
         </div>
         
         <div class="input-group">
             <label>データの復元（読み込み）</label>
-            <!-- input fileは隠して、ボタンから呼び出す -->
-            <button class="btn-cancel" onclick="document.getElementById('import-file').click()" style="padding: 14px; border-radius: 12px; border:none; font-weight:bold; font-size:1.1rem; cursor:pointer;">📤 バックアップを復元</button>
+            <button class="btn-cancel" onclick="document.getElementById('import-file').click()" style="padding: 12px; border-radius: 12px; border:none; font-weight:bold; font-size:1.1rem; cursor:pointer;">📤 バックアップを復元</button>
             <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
-            <p style="font-size: 0.8rem; color: #666; margin-top: 0;">※現在のデータは上書きされます</p>
         </div>
     </div>
 
@@ -310,11 +324,78 @@
             currentEditId = null;
         }
 
+        // --- カテゴリ管理・並べ替え機能 ---
+        function renderCategoryManager() {
+            const container = document.getElementById('category-manage-list');
+            container.innerHTML = '';
+            
+            categories.forEach((cat, index) => {
+                container.innerHTML += `
+                    <div class="category-item">
+                        <span style="font-weight:bold; font-size:1.1rem; color:#333;">${cat}</span>
+                        <div class="category-actions">
+                            <button class="btn-move" onclick="moveCategory(${index}, -1)" ${index === 0 ? 'disabled' : ''}>▲</button>
+                            <button class="btn-move" onclick="moveCategory(${index}, 1)" ${index === categories.length - 1 ? 'disabled' : ''}>▼</button>
+                            <button class="btn-delete" style="width:32px; height:32px; border-radius:8px;" onclick="deleteCategoryWhole(${index})">×</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function moveCategory(index, direction) {
+            if (index + direction < 0 || index + direction >= categories.length) return;
+            // 順番を入れ替える
+            const temp = categories[index];
+            categories[index] = categories[index + direction];
+            categories[index + direction] = temp;
+            
+            localStorage.setItem('wl_categories', JSON.stringify(categories));
+            renderCategoryManager();
+            renderTanks();
+        }
+
+        function deleteCategoryWhole(index) {
+            const cat = categories[index];
+            if (!confirm(`カテゴリ「${cat}」を削除しますか？\n\n※このカテゴリの「過去の支出記録」と「予算設定」もすべて削除されます。この操作は元に戻せません。`)) {
+                return;
+            }
+            
+            // カテゴリ、記録、予算から該当するものをすべて消去
+            categories.splice(index, 1);
+            records = records.filter(r => r.category !== cat);
+            delete budgets[cat];
+            
+            localStorage.setItem('wl_categories', JSON.stringify(categories));
+            localStorage.setItem('wl_records', JSON.stringify(records));
+            localStorage.setItem('wl_budgets', JSON.stringify(budgets));
+            
+            renderCategoryManager();
+            renderTanks();
+        }
+
         function showSettingsModal() {
+            renderCategoryManager(); // 開くたびにリストを最新にする
             document.getElementById('overlay').classList.add('active');
             document.getElementById('settings-modal').classList.add('active');
         }
 
+        function addCategory() {
+            let newCat = prompt("新しいカテゴリ名を入力してください:");
+            if (newCat && newCat.trim() !== "") {
+                const trimmedCat = newCat.trim();
+                if (categories.includes(trimmedCat)) {
+                    alert("そのカテゴリは既に存在します。");
+                    return;
+                }
+                categories.push(trimmedCat);
+                localStorage.setItem('wl_categories', JSON.stringify(categories));
+                renderTanks();
+                renderCategoryManager(); // モーダル内のリストも即座に更新
+            }
+        }
+
+        // --- 支出入力 ---
         function showExpenseModal() {
             if (categories.length === 0) return alert("先にカテゴリを追加してください。");
             document.getElementById('expense-modal-title').innerText = "支出の入力";
@@ -393,6 +474,7 @@
             if (currentOpenCategory) showDetailModal(currentOpenCategory);
         }
 
+        // --- 予算設定 ---
         function showBudgetModal() {
             if (categories.length === 0) return alert("先にカテゴリを追加してください。");
             const select = document.getElementById('budget-category');
@@ -417,6 +499,7 @@
             closeAllModals();
         }
 
+        // --- 履歴詳細 ---
         function showDetailModal(category) {
             currentOpenCategory = category;
             const targetY = currentDisplayDate.getFullYear();
@@ -470,73 +553,47 @@
             document.getElementById('detail-modal').classList.add('active');
         }
 
-        function addCategory() {
-            let newCat = prompt("新しいカテゴリ名を入力してください:");
-            if (newCat && newCat.trim() !== "") {
-                categories.push(newCat.trim());
-                localStorage.setItem('wl_categories', JSON.stringify(categories));
-                renderTanks();
-                closeAllModals(); // 設定モーダルを閉じる
-            }
-        }
-
-        // --- データエクスポート（バックアップ） ---
+        // --- データエクスポート ---
         function exportData() {
-            const data = {
-                categories: categories,
-                records: records,
-                budgets: budgets
-            };
+            const data = { categories: categories, records: records, budgets: budgets };
             const jsonStr = JSON.stringify(data, null, 2);
             const blob = new Blob([jsonStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
             a.href = url;
-            
             const d = new Date();
             const dateStr = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
             a.download = `kakeibo_backup_${dateStr}.json`;
-            
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        // --- データインポート（復元） ---
+        // --- データインポート ---
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
             if (!confirm("現在のデータはすべて消去され、バックアップデータで上書きされます。本当によろしいですか？")) {
                 event.target.value = ''; 
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const imported = JSON.parse(e.target.result);
-                    // 簡単な形式チェック
                     if (imported.categories && imported.records && imported.budgets) {
                         categories = imported.categories;
                         records = imported.records;
                         budgets = imported.budgets;
-                        
                         localStorage.setItem('wl_categories', JSON.stringify(categories));
                         localStorage.setItem('wl_records', JSON.stringify(records));
                         localStorage.setItem('wl_budgets', JSON.stringify(budgets));
-                        
                         alert("データの復元が完了しました！");
                         closeAllModals();
                         updateMonthDisplay();
-                    } else {
-                        alert("ファイル形式が正しくありません。");
-                    }
-                } catch (error) {
-                    alert("ファイルの読み込みに失敗しました。");
-                }
+                    } else { alert("ファイル形式が正しくありません。"); }
+                } catch (error) { alert("ファイルの読み込みに失敗しました。"); }
                 event.target.value = ''; 
             };
             reader.readAsText(file);
