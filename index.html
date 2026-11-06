@@ -18,7 +18,12 @@
             display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        h1 { margin: 0; font-size: 1.2rem; color: #333; }
+        
+        /* 月めくりセレクターのデザイン */
+        .month-selector { display: flex; align-items: center; gap: 10px; }
+        .month-selector button { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #007aff; padding: 0 5px; }
+        .month-selector h1 { margin: 0; font-size: 1.2rem; color: #333; min-width: 100px; text-align: center; }
+        
         .header-buttons { display: flex; gap: 15px; }
         .btn { color: #007aff; background: none; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; }
         .btn-reload { color: #ff3b30; }
@@ -90,7 +95,7 @@
             background: #fff; padding: 24px 20px 40px 20px;
             border-radius: 24px 24px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
             transition: bottom 0.3s ease; z-index: 101;
-            display: flex; flex-direction: column; gap: 20px;
+            display: flex; flex-direction: column; gap: 16px;
             padding-bottom: max(40px, env(safe-area-inset-bottom));
         }
         .modal.active { bottom: 0; }
@@ -102,6 +107,9 @@
             font-size: 1.1rem; padding: 12px; border: 1px solid #ddd;
             border-radius: 10px; background-color: #f9f9f9;
         }
+        /* 日付ピッカー用調整 */
+        input[type="date"] { font-family: -apple-system, sans-serif; }
+
         .modal-actions { display: flex; gap: 15px; margin-top: 10px; }
         .modal-actions button {
             flex: 1; padding: 14px; font-size: 1.1rem; border-radius: 12px;
@@ -110,7 +118,6 @@
         .btn-cancel { background: #e5e5ea; color: #333; }
         .btn-save { background: #007aff; color: white; }
 
-        /* 詳細モーダルと編集・削除ボタン */
         #detail-modal { height: 80vh; }
         .history-item {
             display: flex; align-items: center; background: #fff; padding: 14px 16px; 
@@ -133,7 +140,11 @@
 <body>
 
     <header>
-        <h1>今月の家計簿</h1>
+        <div class="month-selector">
+            <button onclick="prevMonth()">◀</button>
+            <h1 id="current-month-display">2026年11月</h1>
+            <button onclick="nextMonth()">▶</button>
+        </div>
         <div class="header-buttons">
             <button class="btn btn-reload" onclick="location.reload(true)">↻ 強制更新</button>
             <button class="btn" onclick="showBudgetModal()">予算設定</button>
@@ -147,9 +158,13 @@
 
     <div id="overlay" class="overlay" onclick="closeAllModals()"></div>
 
-    <!-- ① 支出入力（兼 編集）用モーダル -->
+    <!-- ① 支出入力（カレンダー付き）用モーダル -->
     <div id="expense-modal" class="modal">
         <h2 id="expense-modal-title">支出の入力</h2>
+        <div class="input-group">
+            <label>日付</label>
+            <input type="date" id="expense-date">
+        </div>
         <div class="input-group">
             <label>カテゴリ</label>
             <select id="expense-category"></select>
@@ -202,17 +217,44 @@
         let records = JSON.parse(localStorage.getItem('wl_records')) || [];
         let budgets = JSON.parse(localStorage.getItem('wl_budgets')) || {};
         
-        let currentEditId = null; // 現在編集中の記録IDを保持
-        let currentOpenCategory = ''; // 現在開いている詳細のカテゴリ
-
+        let currentEditId = null;
+        let currentOpenCategory = '';
         const waterColors = ['#007aff', '#34c759', '#ff9500', '#af52de', '#ff2d55', '#5ac8fa', '#ffcc00'];
 
+        // --- 月めくり機能（現在表示している月を管理） ---
+        let currentDisplayDate = new Date();
+        currentDisplayDate.setDate(1); // 月末のオーバーフロー防止のために1日に固定
+
+        function updateMonthDisplay() {
+            const y = currentDisplayDate.getFullYear();
+            const m = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
+            document.getElementById('current-month-display').innerText = `${y}年${m}月`;
+            renderTanks(); // 月が変わったらタンクを描画し直す
+        }
+
+        function prevMonth() {
+            currentDisplayDate.setMonth(currentDisplayDate.getMonth() - 1);
+            updateMonthDisplay();
+        }
+
+        function nextMonth() {
+            currentDisplayDate.setMonth(currentDisplayDate.getMonth() + 1);
+            updateMonthDisplay();
+        }
+
+        // --- 描画処理 ---
         function renderTanks() {
             const container = document.getElementById('tank-container');
             container.innerHTML = '';
             
+            // 現在の「YYYY-MM」文字列を作成してフィルターに使用
+            const targetY = currentDisplayDate.getFullYear();
+            const targetM = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
+            const targetMonthStr = `${targetY}-${targetM}`;
+            
             categories.forEach(category => {
-                const categoryRecords = records.filter(r => r.category === category);
+                // その月、かつ、そのカテゴリの記録だけを抽出
+                const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
                 const totalSpent = categoryRecords.reduce((sum, record) => sum + record.amount, 0);
                 const categoryBudget = budgets[category] || 10000;
                 const maxHeight = 380;
@@ -267,8 +309,14 @@
             const select = document.getElementById('expense-category');
             select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
             
-            // 新規入力用にリセット
             if (!currentEditId) {
+                // 新規入力時は「今日」の日付を自動セット
+                const today = new Date();
+                const y = today.getFullYear();
+                const m = String(today.getMonth() + 1).padStart(2, '0');
+                const d = String(today.getDate()).padStart(2, '0');
+                document.getElementById('expense-date').value = `${y}-${m}-${d}`;
+                
                 document.getElementById('expense-amount').value = '';
                 document.getElementById('expense-memo').value = '';
             }
@@ -278,36 +326,48 @@
         }
 
         function saveExpense() {
+            const dateVal = document.getElementById('expense-date').value;
             const cat = document.getElementById('expense-category').value;
             const amt = parseInt(document.getElementById('expense-amount').value, 10);
             const memo = document.getElementById('expense-memo').value || '';
+            
+            if (!dateVal) return alert("日付を選択してください");
             if (!amt || isNaN(amt)) return alert("正しい金額を入力してください");
             
             if (currentEditId) {
-                // 編集（上書き）処理
                 const index = records.findIndex(r => r.id === currentEditId);
                 if (index !== -1) {
+                    records[index].date = dateVal;
                     records[index].category = cat;
                     records[index].amount = amt;
                     records[index].memo = memo;
                 }
             } else {
-                // 新規追加処理
-                records.push({ id: Date.now(), category: cat, amount: amt, memo: memo, date: new Date().toISOString() });
+                records.push({ id: Date.now(), category: cat, amount: amt, memo: memo, date: dateVal });
             }
             
             localStorage.setItem('wl_records', JSON.stringify(records));
-            renderTanks();
-            closeAllModals(); // 一旦すべて閉じてトップ画面に戻る
+            
+            // 保存したデータが含まれる月へ自動的に表示を切り替える
+            const savedDateObj = new Date(dateVal);
+            currentDisplayDate.setFullYear(savedDateObj.getFullYear());
+            currentDisplayDate.setMonth(savedDateObj.getMonth());
+            updateMonthDisplay();
+            
+            closeAllModals();
         }
 
-        // --- 編集機能 ---
         function editRecord(id) {
             const record = records.find(r => r.id === id);
             if (!record) return;
             
             currentEditId = id;
             document.getElementById('expense-modal-title').innerText = "支出の修正";
+            
+            // 古いデータ形式（Tで始まる時刻情報付き）を YYYY-MM-DD に変換してセット
+            let dStr = record.date;
+            if (dStr.includes('T')) dStr = dStr.split('T')[0];
+            document.getElementById('expense-date').value = dStr;
             
             const select = document.getElementById('expense-category');
             select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -316,22 +376,16 @@
             document.getElementById('expense-amount').value = record.amount;
             document.getElementById('expense-memo').value = record.memo || '';
             
-            // 詳細モーダルを閉じて入力モーダルを開く
             document.getElementById('detail-modal').classList.remove('active');
             document.getElementById('expense-modal').classList.add('active');
         }
 
-        // --- 削除機能 ---
         function deleteRecord(id) {
             if (!confirm("この記録を削除しますか？")) return;
             records = records.filter(r => r.id !== id);
             localStorage.setItem('wl_records', JSON.stringify(records));
             renderTanks();
-            
-            // 詳細画面を開いたまま中身をリフレッシュ
-            if (currentOpenCategory) {
-                showDetailModal(currentOpenCategory);
-            }
+            if (currentOpenCategory) showDetailModal(currentOpenCategory);
         }
 
         function showBudgetModal() {
@@ -361,10 +415,16 @@
 
         function showDetailModal(category) {
             currentOpenCategory = category;
-            document.getElementById('detail-title').innerText = category + " の履歴";
+            
+            const targetY = currentDisplayDate.getFullYear();
+            const targetM = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
+            const targetMonthStr = `${targetY}-${targetM}`;
+            
+            document.getElementById('detail-title').innerText = `${category} (${targetM}月) の履歴`;
             const content = document.getElementById('detail-content');
             
-            const categoryRecords = records.filter(r => r.category === category);
+            // 現在表示している月の記録だけを抽出して表示
+            const categoryRecords = records.filter(r => r.category === category && r.date.startsWith(targetMonthStr));
             let listHTML = '';
             
             const reversedRecords = [...categoryRecords].reverse();
@@ -373,17 +433,23 @@
                 const originalIndex = categoryRecords.length - 1 - revIndex;
                 const color = waterColors[originalIndex % waterColors.length];
                 
-                const dateObj = new Date(record.date);
-                const dateStr = (dateObj.getMonth() + 1) + '/' + dateObj.getDate();
+                // 過去データと新しいデータで日付表示を安全に行う
+                let displayDate = '';
+                if (record.date.includes('T')) {
+                    const d = new Date(record.date);
+                    displayDate = (d.getMonth() + 1) + '/' + d.getDate();
+                } else {
+                    const parts = record.date.split('-'); // YYYY-MM-DD
+                    displayDate = parseInt(parts[1]) + '/' + parseInt(parts[2]);
+                }
                 
-                // 過去データにIDがない場合の対策
                 if (!record.id) { record.id = new Date(record.date).getTime() + Math.random(); }
                 
                 listHTML += `
                     <div class="history-item">
                         <div style="width: 20px; height: 20px; border-radius: 10px; background-color: ${color}; flex-shrink: 0;"></div>
                         <div style="flex: 1; min-width: 0;">
-                            <div style="font-size: 0.8rem; color: #888;">${dateStr}</div>
+                            <div style="font-size: 0.8rem; color: #888;">${displayDate}</div>
                             <div style="font-weight: bold; font-size: 1.05rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${record.memo || '入力なし'}</div>
                         </div>
                         <div style="font-size: 1.2rem; font-weight: bold; color: #333; margin-right: 4px;">${record.amount}円</div>
@@ -414,7 +480,9 @@
             }
         }
 
-        renderTanks();
+        // 初期化：当月の表示でスタート
+        updateMonthDisplay();
     </script>
 </body>
 </html>
+
